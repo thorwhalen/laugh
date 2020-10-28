@@ -1,5 +1,5 @@
 
-# haha
+# laugh
 Access a joke (or more) through python.
 
 And what funnier joke than... 
@@ -16,7 +16,7 @@ taken from [api.chucknorris.io],
 but replacing the name with "Thor", to fit with the times.
 
 ```pydocstring
->>> import haha  
+>>> import laugh  
 Read! its what smart people do! but not Thor. He already is smart enough.
 ```
 
@@ -24,7 +24,7 @@ But you can choose your own name to mock.
 Let's say, "Chuck Norris" (the actual original name used in the source database).
 
 ```pydocstring
->>> from haha import NamedJokes
+>>> from laugh import NamedJokes
 >>> joke_gen = NamedJokes('Chuck Norris')  # make a joke with any name
 >>> joke_gen()
 'Chuck Norris is, and has always been where it's at.''
