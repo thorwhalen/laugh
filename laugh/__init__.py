@@ -51,7 +51,7 @@ class NamedJokes:
                     return []
 
         
-    _spaces = re.compile('\s+')
+    _spaces = re.compile(r'\s+')
     _chuck_norris = re.compile('Chuck Norris', re.IGNORECASE)
     _chuck = re.compile('Chuck', re.IGNORECASE)
     _norris = re.compile('Norris', re.IGNORECASE)
