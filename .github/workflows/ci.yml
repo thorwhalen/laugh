@@ -1,0 +1,126 @@
+name: Continuous Integration (Modern)
+on: [push, pull_request]
+
+env:
+  PROJECT_NAME: laugh
+
+jobs:
+  validation:
+    name: Validation
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Dependencies
+        uses: i2mint/wads/actions/install-deps@master
+        with:
+          dependency-files: pyproject.toml
+          extras: dev,test
+          # Fallback for projects still using setup.cfg:
+          # dependency-files: setup.cfg
+          # ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}  # Uncomment for private dependencies
+
+      - name: Format Source Code
+        uses: i2mint/wads/actions/ruff-format@master
+        with:
+          line-length: 88
+          target-path: .
+
+      - name: Lint Validation
+        uses: i2mint/wads/actions/ruff-lint@master
+        with:
+          root-dir: ${{ env.PROJECT_NAME }}
+          output-format: github
+          # Ruff will read configuration from pyproject.toml
+
+      - name: Run Tests
+        uses: i2mint/wads/actions/run-tests@master
+        with:
+          root-dir: ${{ env.PROJECT_NAME }}
+          exclude: examples,scrap
+          coverage: true
+          pytest-args: -v --tb=short
+
+  publish:
+    name: Publish
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')"
+    needs: validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Format Source Code
+        uses: i2mint/wads/actions/ruff-format@master
+
+      - name: Update Version Number
+        uses: i2mint/isee/actions/bump-version-number@master
+
+      - name: Build Distribution
+        uses: i2mint/wads/actions/build-dist@master
+        with:
+          sdist: true
+          wheel: true
+        # Uncomment for private dependencies:
+        # with:
+        #   ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Publish to PyPI
+        uses: i2mint/wads/actions/pypi-upload@master
+        with:
+          pypi-username: ${{ secrets.PYPI_USERNAME }}
+          pypi-password: ${{ secrets.PYPI_PASSWORD }}
+          skip-existing: false
+
+      - name: Commit Changes
+        uses: i2mint/wads/actions/git-commit@master
+        with:
+          commit-message: "**CI** Formatted code + Updated version to ${{ steps.version.outputs.version }} [skip ci]"
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          push: true
+
+      - name: Tag Repository
+        uses: i2mint/wads/actions/git-tag@master
+        with:
+          tag: ${{ steps.version.outputs.version }}
+          message: "Release version ${{ steps.version.outputs.version }}"
+          push: true
+
+  github-pages:
+    name: Publish GitHub Pages
+
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)"
+    needs: publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: i2mint/epythet/actions/publish-github-pages@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ignore: "tests/,scrap/,examples/"
