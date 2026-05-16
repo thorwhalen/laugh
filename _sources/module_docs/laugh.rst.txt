@@ -1,0 +1,4 @@
+laugh
+=====
+.. automodule:: laugh
+   :members:
